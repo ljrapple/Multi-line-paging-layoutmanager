@@ -1,5 +1,5 @@
 # MultiLineAndPaging
-Implement multi-line paging layout for Android
+Implement horizontal multi-line paging layout for Android
 
 Regular Layout 
 
