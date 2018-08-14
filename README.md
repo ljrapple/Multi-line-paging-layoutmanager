@@ -1,2 +1,2 @@
 # MultiLineAndPaging
-Implement multi-line paging layout
+Implement multi-line paging layout for Android
