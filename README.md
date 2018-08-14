@@ -3,8 +3,8 @@ Implement multi-line paging layout for Android
 
 Regular Layout 
 
-https://github.com/ljrapple/MultiLineAndPaging/blob/master/image/regular.jpg
-
+<a target="_blank" href="https://github.com/ljrapple/MultiLineAndPaging/blob/master/image/regular.jpg"><img src="https://github.com/ljrapple/MultiLineAndPaging/blob/master/image/regular.jpg" alt="Alt text" style="max-width:100%;">
+  
 Irregular Layout 
 
-https://github.com/ljrapple/MultiLineAndPaging/blob/master/image/irregular.jpg
+<a target="_blank" href="https://github.com/ljrapple/MultiLineAndPaging/blob/master/image/irregular.jpg"><img src="https://github.com/ljrapple/MultiLineAndPaging/blob/master/image/irregular.jpg" alt="Alt text" style="max-width:100%;"></a>
