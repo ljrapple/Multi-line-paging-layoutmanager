@@ -22,7 +22,7 @@ public class GridPagerTestActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.grid_layout);
         RecyclerView recyclerView = findViewById(R.id.recycler_view);
-        GridPagerLayoutManager layoutManager = new GridPagerLayoutManager();
+        GridPagerLayoutManager layoutManager = new GridPagerLayoutManager(getApplicationContext());
         layoutManager.setRecycleChildrenOnDetach(true);
         recyclerView.setLayoutManager(layoutManager);
         Adapter adapter = new Adapter();

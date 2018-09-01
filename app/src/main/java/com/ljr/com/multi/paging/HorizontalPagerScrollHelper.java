@@ -9,8 +9,7 @@ package com.ljr.com.multi.paging;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
+import android.content.Context;
 import android.support.v7.widget.RecyclerView;
 
 import java.util.concurrent.TimeUnit;
@@ -43,7 +42,7 @@ public class HorizontalPagerScrollHelper {
              */
             if (velocityX < 0 && mCurrentPageNumber > 0) {
                 mCurrentPageNumber--;
-            } else if (velocityX > 0 && mCurrentPageNumber < mPageCount - 1) {
+            } else if (velocityX > 0 && mCurrentPageNumber < mMaxPage) {
                 mCurrentPageNumber++;
             }
             int toX = getTotalOffsetX();
@@ -109,9 +108,7 @@ public class HorizontalPagerScrollHelper {
         }
     }
 
-    @NonNull
     private final RecyclerView mRecyclerView;
-    @Nullable
     private ValueAnimator mAnimator;
     private int mTotalOffsetX;
     private int mOffsetX;
@@ -119,28 +116,30 @@ public class HorizontalPagerScrollHelper {
     private int mPageCount;
     private int mScrollState;
     private int mRecyclerViewWidth;
-    @Nullable
     private OnPageChangeListener mOnPageChangeListener;
-    @NonNull
     private final PagerFlingListener mOnFlingListener;
+    private int mMaxPage;
+    private Context mContext;
 
-    private HorizontalPagerScrollHelper(@NonNull RecyclerView recyclerView) {
+    private HorizontalPagerScrollHelper(RecyclerView recyclerView) {
+        Check.isNotNull(recyclerView);
         mRecyclerView = recyclerView;
         mOnFlingListener = new PagerFlingListener();
         mRecyclerView.setOnFlingListener(mOnFlingListener);
         mRecyclerView.addOnScrollListener(new GridPagerScrollListener());
+        mContext = mRecyclerView.getContext();
     }
 
     private int getOffsetPageCount() {
         return mTotalOffsetX / mRecyclerView.getWidth();
     }
 
-    public void setOnPageChangeListener(@NonNull OnPageChangeListener listener) {
+    public void setOnPageChangeListener(OnPageChangeListener listener) {
         mOnPageChangeListener = listener;
     }
 
     public static HorizontalPagerScrollHelper createGridPagerScrollHelper(
-            @NonNull RecyclerView recyclerView) {
+            RecyclerView recyclerView) {
         return new HorizontalPagerScrollHelper(recyclerView);
     }
 
@@ -150,8 +149,10 @@ public class HorizontalPagerScrollHelper {
         }
         mOffsetX = 0;
         mCurrentPageNumber = 0;
-        mTotalOffsetX = 0;
         mPageCount = pageCount;
+        mCurrentPageNumber = isLayoutRtl() ? mPageCount : 0;
+        mMaxPage = isLayoutRtl() ? mPageCount : mPageCount - 1;
+        mTotalOffsetX = isLayoutRtl() ? mPageCount * mRecyclerView.getWidth() : 0;
     }
 
     private int getVelocityX() {
@@ -166,5 +167,9 @@ public class HorizontalPagerScrollHelper {
 
     private int getTotalOffsetX() {
         return mCurrentPageNumber * mRecyclerView.getWidth();
+    }
+
+    private boolean isLayoutRtl() {
+        return UIUtils.isLayoutRtl(mContext);
     }
 }
