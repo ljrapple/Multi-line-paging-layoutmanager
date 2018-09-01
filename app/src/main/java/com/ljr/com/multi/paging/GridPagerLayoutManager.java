@@ -209,16 +209,7 @@ public class GridPagerLayoutManager extends RecyclerView.LayoutManager {
 
     private void computeLayoutChildItem(int pos, View itemView) {
         measureChildWithMargins(itemView, 0, 0);
-        if (mLayoutState.mItemHeight == 0) {
-            mLayoutState.mItemHeight =
-                    mOrientationHelper.getDecoratedMeasurementInOther(itemView);
-            if (mLayoutState.mItemHeight != 0) {
-                mLayoutState.mTotalRow = getHeight() / mLayoutState.mItemHeight;
-                mLayoutState.mVerticalPadding =
-                        getHeight() - mLayoutState.mTotalRow * mLayoutState.mItemHeight;
-            }
-            mCurrentPageInfo.mHorizontalOffset = mCurrentPageInfo.mCurrentPageLeft;
-        }
+        initializeCurrentPage(itemView);
         resetCurrentPageIndex(pos);
         final int itemWidth = mColumnWidth > 0 ? mColumnWidth :
                 mOrientationHelper.getDecoratedMeasurement(itemView);
@@ -248,16 +239,7 @@ public class GridPagerLayoutManager extends RecyclerView.LayoutManager {
     private void layoutChildItem(int pos, View itemView) {
         measureChildWithMargins(itemView, 0, 0);
         addView(itemView);
-        if (mLayoutState.mItemHeight == 0) {
-            mLayoutState.mItemHeight =
-                    mOrientationHelper.getDecoratedMeasurementInOther(itemView);
-            if (mLayoutState.mItemHeight != 0) {
-                mLayoutState.mTotalRow = getHeight() / mLayoutState.mItemHeight;
-                mLayoutState.mVerticalPadding =
-                        getHeight() - mLayoutState.mTotalRow * mLayoutState.mItemHeight;
-            }
-            mCurrentPageInfo.mHorizontalOffset = mCurrentPageInfo.mCurrentPageLeft;
-        }
+        initializeCurrentPage(itemView);
         resetCurrentPageIndex(pos);
         final int itemWidth = mColumnWidth > 0 ? mColumnWidth :
                 mOrientationHelper.getDecoratedMeasurement(itemView);
@@ -285,6 +267,19 @@ public class GridPagerLayoutManager extends RecyclerView.LayoutManager {
             mCurrentPageInfo.mStartPos = pos;
         } else {
             mCurrentPageInfo.mLastPos = pos;
+        }
+    }
+
+    private void initializeCurrentPage(View itemView){
+        if (mLayoutState.mItemHeight == 0) {
+            mLayoutState.mItemHeight =
+                    mOrientationHelper.getDecoratedMeasurementInOther(itemView);
+            if (mLayoutState.mItemHeight != 0) {
+                mLayoutState.mTotalRow = getHeight() / mLayoutState.mItemHeight;
+                mLayoutState.mVerticalPadding =
+                        getHeight() - mLayoutState.mTotalRow * mLayoutState.mItemHeight;
+            }
+            mCurrentPageInfo.mHorizontalOffset = mCurrentPageInfo.mCurrentPageLeft;
         }
     }
 
