@@ -17,23 +17,25 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class GridPagerTestActivity extends Activity {
+
+    private Adapter mAdapter;
+    RecyclerView recyclerView;
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.grid_layout);
-        RecyclerView recyclerView = findViewById(R.id.recycler_view);
+        recyclerView = findViewById(R.id.recycler_view);
         GridPagerLayoutManager layoutManager = new GridPagerLayoutManager(getApplicationContext());
         layoutManager.setRecycleChildrenOnDetach(true);
         recyclerView.setLayoutManager(layoutManager);
-        Adapter adapter = new Adapter();
+        mAdapter = new Adapter();
         final HorizontalPagerScrollHelper scrollHelper =
                 HorizontalPagerScrollHelper.createGridPagerScrollHelper(recyclerView);
         layoutManager.setOnCompleteLayout(new GridPagerLayoutManager.OnCompleteLayout() {
             @Override
-            public void onCompleteLayout(boolean refresh, int pageSize) {
-                if (refresh) {
-                    scrollHelper.reinitialization(pageSize);
-                }
+            public void onCompleteLayout(int pageSize, int currentPage) {
+                scrollHelper.reinitialization(pageSize, currentPage);
             }
         });
         int padding = (int) UIUtils.dpToPixels(6, getApplicationContext());
@@ -42,7 +44,7 @@ public class GridPagerTestActivity extends Activity {
         layoutManager.setRow(4);
         int column = getIntent().getIntExtra("column", 0);
         layoutManager.setColumn(column);
-        recyclerView.setAdapter(adapter);
+        recyclerView.setAdapter(mAdapter);
     }
 
     private class ViewHolder extends RecyclerView.ViewHolder {
@@ -53,8 +55,14 @@ public class GridPagerTestActivity extends Activity {
             mTextView = (TextView) itemView;
         }
 
-        private void bind(String text) {
+        private void bind(String text, final int pos) {
             mTextView.setText(text);
+            itemView.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    mAdapter.notifyItemRemovedN(recyclerView.getChildLayoutPosition(itemView));
+                }
+            });
         }
     }
 
@@ -75,12 +83,18 @@ public class GridPagerTestActivity extends Activity {
 
         @Override
         public void onBindViewHolder(ViewHolder holder, int position) {
-            holder.bind(mData.get(position));
+            holder.bind(mData.get(position), position);
         }
 
         @Override
         public int getItemCount() {
             return mData.size();
         }
+
+        public void notifyItemRemovedN(int pos) {
+            mData.remove(pos);
+            notifyItemRemoved(pos);
+        }
+
     }
 }
