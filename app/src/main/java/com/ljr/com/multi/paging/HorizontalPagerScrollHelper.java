@@ -11,6 +11,7 @@ import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
 import android.content.Context;
 import android.support.v7.widget.RecyclerView;
+import android.view.ViewConfiguration;
 
 import java.util.concurrent.TimeUnit;
 
@@ -46,6 +47,8 @@ public class HorizontalPagerScrollHelper {
                 mCurrentPageNumber++;
             }
             int toX = getTotalOffsetX();
+            toX = velocityX == 0 && mOrientation < 0 ?
+                    (int) (toX - getWidth() * mWidthIncrementRate) : toX;
             if (mAnimator == null) {
                 mAnimator = ValueAnimator.ofInt(fromX, toX);
                 mAnimator.setDuration(FLING_ANIMATOR_DURATION);
@@ -56,30 +59,34 @@ public class HorizontalPagerScrollHelper {
                         mRecyclerView.scrollBy(scrolledX - mTotalOffsetX, 0);
                     }
                 });
-                mAnimator.addListener(createAnimatorListenerAdapter());
+                mAnimator.addListener(createAnimatorListenerAdapter(velocityX));
             } else {
                 mAnimator.cancel();
                 mAnimator.removeAllListeners();
-                mAnimator.addListener(createAnimatorListenerAdapter());
+                mAnimator.addListener(createAnimatorListenerAdapter(velocityX));
                 mAnimator.setIntValues(fromX, toX);
             }
             mAnimator.start();
             return true;
         }
 
-        private AnimatorListenerAdapter createAnimatorListenerAdapter() {
+        private AnimatorListenerAdapter createAnimatorListenerAdapter(final int velocityX) {
             return new AnimatorListenerAdapter() {
                 @Override
                 public void onAnimationEnd(Animator animation) {
                     if (mOnPageChangeListener != null) {
                         mOnPageChangeListener.onPageChange(getOffsetPageCount());
                     }
-                    mOffsetX = 0;
+                    mOffsetX = velocityX == 0 && mOrientation < 0 ?
+                            (int) (getWidth() * mWidthIncrementRate * -1) : 0;
+                    mLastOrientation = velocityX == 0 && mOrientation < 0 ? mOrientation : 0;
+                    mOrientation = 0;
                 }
 
                 @Override
                 public void onAnimationCancel(Animator animation) {
                     mOffsetX = 0;
+                    mOrientation = 0;
                 }
             };
         }
@@ -97,14 +104,15 @@ public class HorizontalPagerScrollHelper {
         @Override
         public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
             mRecyclerViewWidth =
-                    mRecyclerViewWidth == 0 ? mRecyclerView.getWidth() : mRecyclerViewWidth;
-            if (mRecyclerViewWidth != mRecyclerView.getWidth()) {
-                mRecyclerViewWidth = mRecyclerView.getWidth();
+                    mRecyclerViewWidth == 0 ? getWidth() : mRecyclerViewWidth;
+            if (mRecyclerViewWidth != getWidth()) {
+                mRecyclerViewWidth = getWidth();
                 mTotalOffsetX = getTotalOffsetX();
                 mOffsetX = 0;
             }
             mTotalOffsetX += dx;
             mOffsetX += dx;
+            mOrientation = dx < 0 ? -1 : 1;
         }
     }
 
@@ -120,6 +128,10 @@ public class HorizontalPagerScrollHelper {
     private final PagerFlingListener mOnFlingListener;
     private int mMaxPage;
     private Context mContext;
+    private int mOrientation;
+    private int mLastOrientation;
+    private final int mScaledTouchSlop;
+    private float mWidthIncrementRate;
 
     private HorizontalPagerScrollHelper(RecyclerView recyclerView) {
         Check.isNotNull(recyclerView);
@@ -128,10 +140,11 @@ public class HorizontalPagerScrollHelper {
         mRecyclerView.setOnFlingListener(mOnFlingListener);
         mRecyclerView.addOnScrollListener(new GridPagerScrollListener());
         mContext = mRecyclerView.getContext();
+        mScaledTouchSlop = ViewConfiguration.get(mContext).getScaledTouchSlop() * 2;
     }
 
     private int getOffsetPageCount() {
-        return mTotalOffsetX / mRecyclerView.getWidth();
+        return mTotalOffsetX / getWidth();
     }
 
     public void setOnPageChangeListener(OnPageChangeListener listener) {
@@ -143,33 +156,49 @@ public class HorizontalPagerScrollHelper {
         return new HorizontalPagerScrollHelper(recyclerView);
     }
 
-    public void reinitialization(int pageCount) {
+    public void reinitialization(int pageCount, int currentPage) {
+        if (mPageCount == pageCount) return;
         if (mAnimator != null) {
             mAnimator.cancel();
         }
         mOffsetX = 0;
-        mCurrentPageNumber = 0;
+        mCurrentPageNumber = currentPage;
         mPageCount = pageCount;
-        mCurrentPageNumber = isLayoutRtl() ? mPageCount : 0;
-        mMaxPage = isLayoutRtl() ? mPageCount : mPageCount - 1;
-        mTotalOffsetX = isLayoutRtl() ? mPageCount * mRecyclerView.getWidth() : 0;
+        mMaxPage = pageCount > 0 && pageCount == currentPage ? mPageCount : mPageCount - 1;
+        mTotalOffsetX = isLayoutRtl() ? mCurrentPageNumber * getWidth() : 0;
+        mOrientation = 0;
+        mLastOrientation = 0;
     }
 
     private int getVelocityX() {
         int velocityX = 0;
         int dx = Math.abs(mOffsetX);
-        boolean changed = dx > mRecyclerView.getWidth() / 3;
+        boolean changed = mOrientation < 0 ? dx > getWidth() / 3
+                : (dx > mScaledTouchSlop + (mLastOrientation < 0 ? getIncrementWidth() : 0));
         if (changed) {
             velocityX = mOffsetX < 0 ? -1 : 1;
         }
+        mLastOrientation = 0;
         return velocityX;
     }
 
     private int getTotalOffsetX() {
-        return mCurrentPageNumber * mRecyclerView.getWidth();
+        return mCurrentPageNumber * getWidth();
     }
 
     private boolean isLayoutRtl() {
         return UIUtils.isLayoutRtl(mContext);
+    }
+
+    private int getWidth() {
+        return mRecyclerView.getWidth() + getIncrementWidth();
+    }
+
+    private int getIncrementWidth() {
+        return (int) (mRecyclerView.getWidth() * mWidthIncrementRate);
+    }
+
+    public void setWidthIncrementRate(float widthIncrementRate) {
+        mWidthIncrementRate = widthIncrementRate;
     }
 }

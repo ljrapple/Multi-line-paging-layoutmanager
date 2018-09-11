@@ -21,7 +21,7 @@ import java.util.List;
 public class GridPagerLayoutManager extends RecyclerView.LayoutManager {
 
     public interface OnCompleteLayout {
-        void onCompleteLayout(boolean refresh, int pageSize);
+        void onCompleteLayout(int pageSize, int currentPage);
     }
 
     private class CurrentPageInfo {
@@ -62,7 +62,7 @@ public class GridPagerLayoutManager extends RecyclerView.LayoutManager {
 
     private class AnchorInfo {
         private int mWidth;
-        private int mTargetPage;
+        private int mTargetPage = -1;
 
         private boolean isConfigurationChanged() {
             return mWidth != getWidth();
@@ -70,7 +70,7 @@ public class GridPagerLayoutManager extends RecyclerView.LayoutManager {
 
         private void reset() {
             mWidth = 0;
-            mTargetPage = 0;
+            mTargetPage = -1;
         }
 
         private int getTargetLeftOffset() {
@@ -114,6 +114,7 @@ public class GridPagerLayoutManager extends RecyclerView.LayoutManager {
     private int mRow = 1;
     private List<Location> mLocations = new ArrayList<>(0);
     private Context mContext;
+    private float mWidthIncrementRate;
 
     public GridPagerLayoutManager(Context context) {
         mOrientationHelper =
@@ -140,28 +141,30 @@ public class GridPagerLayoutManager extends RecyclerView.LayoutManager {
             return;
         }
         mOffsetX = 0;
+        final int tempTargetPage = mAnchorInfo.mTargetPage;
+        mAnchorInfo.mTargetPage = 0;
         mLayoutState.reset();
         mCurrentPageInfo.reset();
-        mAnchorInfo.reset();
         if (mAnchorInfo.isConfigurationChanged()) {
+            mAnchorInfo.reset();
             mAnchorInfo.mWidth = mOrientationHelper.getEnd();
         }
         detachAndScrapAttachedViews(recycler);
         fill(recycler, state);
         mLayoutState.mTotalPageSize = mCurrentPageInfo.mCurrentPage;
         mTotalSpace = (mLayoutState.mTotalPageSize - 1) * getWidth();
-        if (mAnchorInfo.mTargetPage == 0) {
+        mAnchorInfo.mTargetPage = tempTargetPage;
+        if (mAnchorInfo.mTargetPage == -1) {
             mAnchorInfo.mTargetPage = isRevertLayout() ? mLayoutState.mTotalPageSize : 0;
         }
         if (mOnCompleteLayout != null) {
-            mOnCompleteLayout
-                    .onCompleteLayout(mAnchorInfo.mTargetPage == 0
-                                    || mAnchorInfo.mTargetPage == mLayoutState.mTotalPageSize,
-                            mLayoutState.mTotalPageSize);
+            mOnCompleteLayout.onCompleteLayout(mLayoutState.mTotalPageSize, mAnchorInfo.mTargetPage);
         }
         mCurrentPageInfo.reset();
         if (isRevertLayout()) {
-            mOffsetX = mAnchorInfo.getTargetLeftOffset() - getWidth();
+            mOffsetX = mAnchorInfo.mTargetPage == mLayoutState.mTotalPageSize
+                    ? mAnchorInfo.getTargetLeftOffset() - getWidth()
+                    : mAnchorInfo.getTargetLeftOffset();
             offsetChildrenHorizontal(-mOffsetX);
         } else {
             mOffsetX = mAnchorInfo.getTargetLeftOffset();
@@ -198,10 +201,12 @@ public class GridPagerLayoutManager extends RecyclerView.LayoutManager {
             View itemView = recycler.getViewForPosition(location.mPosition);
             measureChildWithMargins(itemView, 0, 0);
             addView(itemView);
-            int left = location.mLeft - (location.mPageIndex - 1) * getWidth();
-            int right = location.mRight - (location.mPageIndex - 1) * getWidth();
-            left += (mCurrentPageInfo.mCurrentPage - location.mPageIndex) * getWidth();
-            right += (mCurrentPageInfo.mCurrentPage - location.mPageIndex) * getWidth();
+            int width = (location.mPageIndex - 1) * getWidth();
+            int revertWidth = (mCurrentPageInfo.mCurrentPage - location.mPageIndex) * getWidth();
+            int left = location.mLeft - width;
+            int right = location.mRight - width;
+            left += revertWidth - getIncrementWidth();
+            right += revertWidth - getIncrementWidth();
             layoutDecoratedWithMargins(itemView, left, location.mTop, right, location.mBottom);
         }
         mLocations.clear();
@@ -270,7 +275,7 @@ public class GridPagerLayoutManager extends RecyclerView.LayoutManager {
         }
     }
 
-    private void initializeCurrentPage(View itemView){
+    private void initializeCurrentPage(View itemView) {
         if (mLayoutState.mItemHeight == 0) {
             mLayoutState.mItemHeight =
                     mOrientationHelper.getDecoratedMeasurementInOther(itemView);
@@ -340,10 +345,10 @@ public class GridPagerLayoutManager extends RecyclerView.LayoutManager {
          * it means it will scroll over the left edge of the first page. Of course, it
          * is also need to correct the value of result.
          */
-        if (distance > mTotalSpace) {
+        if (distance > mTotalSpace + getIncrementWidth()) {
             result = mTotalSpace - mOffsetX;
-        } else if (distance < 0) {
-            result = 0 - mOffsetX;
+        } else if (distance < getIncrementWidth() * -1) {
+            result = (int) (0 - mOffsetX - getIncrementWidth());
         }
         mOffsetX += result;
         mAnchorInfo.mTargetPage = mOffsetX / getWidth();
@@ -446,8 +451,20 @@ public class GridPagerLayoutManager extends RecyclerView.LayoutManager {
     private int getRealWidth() {
         return getWidth() - getPaddingLeft() - getPaddingRight();
     }
+    @Override
+    public int getWidth() {
+        return super.getWidth() + getIncrementWidth();
+    }
+
+    private int getIncrementWidth() {
+        return (int) (super.getWidth() * mWidthIncrementRate);
+    }
 
     private boolean isRevertLayout() {
         return UIUtils.isLayoutRtl(mContext);
+    }
+
+    public void setWidthIncrementRate(float widthIncrementRate) {
+        mWidthIncrementRate = widthIncrementRate;
     }
 }
